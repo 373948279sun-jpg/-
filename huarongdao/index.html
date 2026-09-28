@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>华容道</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@400;600&display=swap">
+<style>
+/* Page tokens: a celadon desk by day, ink by night. The puzzle is a
+   physical object, so the tray and pieces keep their materials in both. */
+:root {
+  color-scheme: light;
+  --ground: #dce3db;
+  --ink: #1b2521;
+  --muted: #56645d;
+  --line: #bcc7bd;
+  --line-strong: #8e9c92;
+  --raised: #e9eee8;
+  --seal: #a5382c;
+  --seal-ink: #fff4e6;
+  --focus: #1b2521;
+  --shadow: rgba(38, 24, 16, .45);
+  --brush: "Ma Shan Zheng", "STKaiti", "KaiTi", "Kaiti SC", "BiauKai", serif;
+  --text: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #111816;
+    --ink: #e1e8e2;
+    --muted: #93a199;
+    --line: #29332e;
+    --line-strong: #4a5751;
+    --raised: #18211e;
+    --seal: #c8483a;
+    --focus: #d9b66c;
+    --shadow: rgba(0, 0, 0, .6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #111816;
+  --ink: #e1e8e2;
+  --muted: #93a199;
+  --line: #29332e;
+  --line-strong: #4a5751;
+  --raised: #18211e;
+  --seal: #c8483a;
+  --focus: #d9b66c;
+  --shadow: rgba(0, 0, 0, .6);
+}
+
+[hidden] { display: none !important; }
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-text-size-adjust: 100%;
+}
+button { font: inherit; color: inherit; }
+
+.app {
+  container-type: inline-size;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-block: 20px 48px;
+  padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px));
+}
+.stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "meta" "board" "play" "levels";
+  gap: 14px;
+}
+@container (min-width: 760px) {
+  .stage {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
+    grid-template-areas: "board head" "board meta" "board play" "board levels";
+    column-gap: 48px;
+    row-gap: 22px;
+    align-items: start;
+  }
+}
+
+/* ---- Masthead ---- */
+.head { grid-area: head; display: flex; align-items: center; gap: 14px; }
+.head__mark { flex: none; }
+.eyebrow { margin: 0 0 4px; font-size: 11.5px; line-height: 1.2; letter-spacing: .3em; color: var(--muted); }
+.head__title { margin: 0; font-family: var(--brush); font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .04em; }
+.head__lede {
+  margin: 0;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
+  max-width: 30em;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+@container (min-width: 760px) {
+  .head { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .head__title { font-size: 72px; }
+  .head__lede { padding-left: 0; border-left: 0; font-size: 15px; }
+}
+
+/* ---- Level name and counters ---- */
+.meta { grid-area: meta; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.meta__level { margin: 0; display: flex; align-items: baseline; gap: 10px; }
+.meta__name { font-family: var(--brush); font-size: 26px; line-height: 1.1; }
+.meta__kind { font-size: 12px; letter-spacing: .15em; color: var(--muted); }
+.stats { display: flex; gap: 18px; margin: 0; }
+.stats div { display: flex; flex-direction: column; align-items: flex-end; }
+.stats dt { font-size: 11.5px; line-height: 1.3; letter-spacing: .15em; color: var(--muted); }
+.stats dd { margin: 0; min-width: 2.2ch; font-size: 22px; font-weight: 600; line-height: 1.2; text-align: right; font-variant-numeric: tabular-nums; }
+@container (min-width: 760px) {
+  .meta { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .meta__name { font-size: 34px; }
+  .stats { gap: 26px; }
+  .stats div { align-items: flex-start; }
+  .stats dd { font-size: 26px; text-align: left; }
+}
+
+/* ---- The tray ---- */
+.board {
+  grid-area: board;
+  justify-self: center;
+  --cell: 76px;
+  --rim: calc(var(--cell) * .18);
+  --gap: max(2px, calc(var(--cell) * .035));
+  --road: max(20px, calc(var(--cell) * .3));
+  --radius: calc(var(--cell) * .09);
+  --wood: #4a2a22;
+  --floor: #5c3b2e;
+  --gold: #f2d28e;
+  position: relative;
+  width: calc(var(--cell) * 4 + var(--rim) * 2);
+  /* 曹操 leaves through the road and vanishes at its far end. */
+  clip-path: inset(-80px -80px 0 -80px);
+  -webkit-user-select: none;
+  user-select: none;
+}
+@container (min-width: 760px) { .board { justify-self: start; } }
+.tray {
+  position: relative;
+  padding: var(--rim);
+  border-radius: calc(var(--rim) * .7);
+  background:
+    linear-gradient(180deg, rgba(255, 226, 196, .10), rgba(0, 0, 0, .22)),
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, .09) 0 1px, transparent 1px 7px, rgba(255, 220, 190, .05) 7px 8px, transparent 8px 13px),
+    var(--wood);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 214, 180, .22),
+    inset 0 -2px 0 rgba(0, 0, 0, .3),
+    0 22px 40px -18px var(--shadow),
+    0 2px 3px rgba(0, 0, 0, .25);
+}
+.floor {
+  position: relative;
+  z-index: 1;
+  width: calc(var(--cell) * 4);
+  height: calc(var(--cell) * 5);
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .14) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+    linear-gradient(180deg, rgba(0, 0, 0, .14) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+    var(--floor);
+  box-shadow: inset 0 3px 7px rgba(0, 0, 0, .45), inset 0 0 0 1px rgba(0, 0, 0, .35);
+}
+.gate {
+  position: absolute;
+  left: calc(var(--rim) + var(--cell));
+  bottom: 0;
+  width: calc(var(--cell) * 2);
+  height: calc(var(--rim) + 1px);
+  background: var(--floor);
+  box-shadow: inset 5px 0 5px -4px rgba(0, 0, 0, .5), inset -5px 0 5px -4px rgba(0, 0, 0, .5);
+}
+.road {
+  display: flex;
+  justify-content: center;
+  width: calc(var(--cell) * 2);
+  height: var(--road);
+  margin-left: calc(var(--rim) + var(--cell));
+  padding: 3px 0 0 .4em;
+  background: linear-gradient(var(--floor), var(--floor) 35%, rgba(92, 59, 46, 0));
+  color: var(--gold);
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: .4em;
+}
+.goal {
+  position: absolute;
+  left: var(--cell);
+  top: calc(var(--cell) * 3);
+  width: calc(var(--cell) * 2);
+  height: calc(var(--cell) * 2);
+  border: 1px dashed rgba(242, 210, 142, .3);
+  border-bottom: 0;
+  pointer-events: none;
+}
+
+/* ---- Pieces ---- */
+.slot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(var(--w) * var(--cell) - var(--gap) * 2);
+  height: calc(var(--h) * var(--cell) - var(--gap) * 2);
+  transform: translate(calc(var(--c) * var(--cell) + var(--gap)), calc(var(--r) * var(--cell) + var(--gap)));
+  border-radius: var(--radius);
+}
+.ghost {
+  border: 2px dashed var(--gold);
+  background: rgba(242, 210, 142, .08);
+  pointer-events: none;
+}
+.piece {
+  --bevel: inset 0 1px 0 rgba(255, 255, 255, .3), inset 0 -2px 0 rgba(0, 0, 0, .22), 0 2px 0 var(--edge), 0 6px 10px -3px rgba(0, 0, 0, .55);
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--face);
+  color: var(--face-ink);
+  box-shadow: var(--bevel);
+  font-family: var(--brush);
+  font-weight: 400;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  transition: transform .14s cubic-bezier(.25, .8, .3, 1), filter .15s;
+}
+.piece--cao {
+  --face: linear-gradient(165deg, #f6efe0, #ebe1cb 55%, #ddd0b4);
+  --face-ink: #1d1813;
+  --edge: #b3a283;
+  --engrave: 0 1px 0 rgba(255, 255, 255, .5);
+}
+.piece--guan {
+  --face: linear-gradient(165deg, #b8453a, #a3352b 55%, #8a2921);
+  --face-ink: #f2d28e;
+  --edge: #5a1a14;
+  --engrave: 0 1px 0 rgba(0, 0, 0, .35);
+}
+.piece--jiang {
+  --face: linear-gradient(165deg, #3a3431, #26211f 55%, #1a1716);
+  --face-ink: #d9b66c;
+  --edge: #0c0a09;
+  --engrave: 0 1px 0 rgba(0, 0, 0, .5);
+}
+.piece--bing {
+  --face: repeating-linear-gradient(100deg, rgba(120, 78, 36, .07) 0 2px, transparent 2px 9px), linear-gradient(165deg, #e0c089, #d2ae72 55%, #c09a5c);
+  --face-ink: #4c2f1d;
+  --edge: #8a6a3c;
+  --engrave: 0 1px 0 rgba(255, 240, 210, .45);
+}
+.piece--cao::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--cell) * .08);
+  border: 1px solid rgba(29, 24, 19, .22);
+  border-radius: calc(var(--radius) * .6);
+  pointer-events: none;
+}
+/* Characters are stacked as flex items rather than with writing-mode:
+   the brush face has no vertical metrics and its glyphs collide. */
+.piece__name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--track);
+  line-height: 1;
+  text-shadow: var(--engrave);
+  pointer-events: none;
+}
+.piece--cao .piece__name { --track: .04em; font-size: calc(var(--cell) * .56); }
+.piece.is-tall .piece__name { --track: .1em; flex-direction: column; font-size: calc(var(--cell) * .5); }
+.piece.is-wide .piece__name { --track: .16em; font-size: calc(var(--cell) * .46); }
+.piece--bing .piece__name { --track: 0em; font-size: calc(var(--cell) * .44); }
+.piece__seal {
+  position: absolute;
+  right: calc(var(--cell) * .15);
+  bottom: calc(var(--cell) * .15);
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--cell) * .035) calc(var(--cell) * .03);
+  border-radius: 2px;
+  background: #a5382c;
+  color: #fff4e6;
+  font-size: calc(var(--cell) * .14);
+  line-height: 1.05;
+  pointer-events: none;
+}
+.piece:focus { outline: none; }
+.piece:focus-visible { z-index: 3; outline: 3px solid var(--gold); outline-offset: 2px; }
+.piece.is-lifted { z-index: 2; cursor: grabbing; filter: brightness(1.08) saturate(1.05); }
+.piece.is-hint { z-index: 2; animation: glow 1.2s ease-in-out infinite; }
+.piece.is-stuck { animation: stuck .3s ease-in-out; }
+.piece.is-hint.is-stuck { animation: stuck .3s ease-in-out, glow 1.2s ease-in-out infinite; }
+.piece.is-leaving {
+  z-index: 2;
+  opacity: 0;
+  transition: transform .8s cubic-bezier(.45, 0, .7, .5), opacity .8s ease-in;
+}
+@keyframes glow {
+  0%, 100% { box-shadow: var(--bevel), 0 0 0 2px var(--gold); }
+  50% { box-shadow: var(--bevel), 0 0 0 5px rgba(242, 210, 142, .45); }
+}
+@keyframes stuck {
+  20% { translate: -4px 0; }
+  40% { translate: 4px 0; }
+  60% { translate: -2px 0; }
+  80% { translate: 2px 0; }
+}
+
+/* ---- Win card, laid over the tray ---- */
+.win {
+  position: absolute;
+  inset: 0 0 var(--road) 0;
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 16px;
+  border-radius: calc(var(--rim) * .7);
+  background: rgba(24, 14, 11, .86);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  color: #f3ead8;
+  text-align: center;
+  animation: fade .3s ease-out both;
+}
+@keyframes fade { from { opacity: 0; } }
+.win__seal {
+  display: flex;
+  flex-direction: column;
+  gap: .06em;
+  padding: .2em .14em;
+  border-radius: 4px;
+  background: #b23a2d;
+  color: #fff4e6;
+  font-family: var(--brush);
+  font-size: calc(var(--cell) * .4);
+  line-height: 1;
+  letter-spacing: .06em;
+  transform: rotate(-5deg);
+  box-shadow: 0 0 0 2px rgba(178, 58, 45, .35);
+  animation: stamp .5s cubic-bezier(.2, 1.3, .4, 1) .1s both;
+}
+@keyframes stamp { from { opacity: 0; transform: scale(1.8) rotate(-14deg); } }
+.win__title {
+  margin: 4px 0 0;
+  font-family: var(--brush);
+  font-weight: 400;
+  font-size: calc(var(--cell) * .38);
+  line-height: 1.2;
+  letter-spacing: .04em;
+  text-wrap: balance;
+}
+.win__stat { margin: 0; font-size: 15px; font-variant-numeric: tabular-nums; }
+.win__note { margin: 0; max-width: 17em; font-size: 13px; line-height: 1.6; color: rgba(243, 234, 216, .75); }
+.win__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+.wbtn {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 1px solid rgba(243, 234, 216, .45);
+  border-radius: 6px;
+  background: transparent;
+  color: #f3ead8;
+  font-weight: 600;
+  letter-spacing: .08em;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.wbtn--main { border-color: #f2d28e; background: #f2d28e; color: #2a1814; }
+.wbtn:focus-visible { outline: 2px solid #f2d28e; outline-offset: 2px; }
+
+/* ---- Controls ---- */
+.play { grid-area: play; display: grid; gap: 8px; }
+.controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@container (min-width: 760px) { .play { max-width: 440px; } }
+.btn {
+  min-height: 44px;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: .06em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.btn:hover:not(:disabled) { border-color: var(--ink); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--ground); }
+.status { margin: 0; min-height: 1.6em; font-size: 13px; line-height: 1.6; color: var(--muted); }
+
+/* ---- Level picker ---- */
+.levels { grid-area: levels; display: grid; gap: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.levels__group { display: grid; gap: 8px; }
+.levels__title { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; letter-spacing: .2em; }
+.levels__desc { margin: -4px 0 0; font-size: 12.5px; color: var(--muted); }
+.levels__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lv {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 10px 8px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+.lv:hover { background: var(--raised); }
+.lv[aria-current="true"] { border-color: var(--line-strong); background: var(--raised); }
+.lv:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.lv__fig { position: relative; display: block; }
+.lv__thumb { display: block; width: 30px; height: 36px; }
+.lv__seal {
+  position: absolute;
+  right: -7px;
+  bottom: -5px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--seal);
+  color: var(--seal-ink);
+  font-family: var(--brush);
+  font-size: 12px;
+  line-height: 1;
+  transform: rotate(-8deg);
+}
+.lv__text { display: grid; min-width: 0; }
+.lv__name { font-size: 15px; font-weight: 600; line-height: 1.35; }
+.lv__meta, .lv__best { font-size: 12px; line-height: 1.45; color: var(--muted); font-variant-numeric: tabular-nums; }
+.note { margin: 0; max-width: 36em; font-size: 12.5px; line-height: 1.75; color: var(--muted); }
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece, .piece.is-leaving { transition: none; }
+  .piece.is-hint { animation: none; box-shadow: var(--bevel), 0 0 0 3px var(--gold); }
+  .piece.is-stuck, .piece.is-hint.is-stuck { animation: none; }
+  .win, .win__seal { animation: none; }
+}
+</style>
+</head>
+<body>
+<div class="app" lang="zh-CN">
+  <div class="stage" id="stage">
+    <header class="head">
+      <div class="head__mark">
+        <p class="eyebrow">三国滑块棋</p>
+        <h1 class="head__title">华容道</h1>
+      </div>
+      <p class="head__lede">赤壁一败，曹操退往华容道，关羽已在路口等着。挪开挡路的兵将，把曹操送到底部出口。</p>
+    </header>
+
+    <div class="meta" id="meta">
+      <p class="meta__level"><span class="meta__name" id="levelName">横刀立马</span><span class="meta__kind" id="levelKind">经典</span></p>
+      <dl class="stats">
+        <div><dt>步数</dt><dd id="steps">0</dd></div>
+        <div><dt>最少</dt><dd id="min">81</dd></div>
+        <div><dt>最佳</dt><dd id="best">—</dd></div>
+      </dl>
+    </div>
+
+    <div class="board" id="board">
+      <div class="tray">
+        <div class="floor" id="floor" role="group" aria-label="棋盘，四列五行">
+          <div class="goal" aria-hidden="true"></div>
+          <div class="slot ghost" id="ghost" hidden></div>
+        </div>
+        <div class="gate" aria-hidden="true"></div>
+      </div>
+      <div class="road" aria-hidden="true">出口</div>
+      <div class="win" id="win" role="dialog" aria-labelledby="winTitle" hidden>
+        <span class="win__seal" aria-hidden="true"><span>义</span><span>释</span></span>
+        <h2 class="win__title" id="winTitle">曹操走出了华容道</h2>
+        <p class="win__stat" id="winStat"></p>
+        <p class="win__note" id="winNote"></p>
+        <div class="win__actions">
+          <button type="button" class="wbtn wbtn--main" id="winNext">下一局</button>
+          <button type="button" class="wbtn" id="winAgain">再走一遍</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="play" id="play">
+      <div class="controls">
+        <button type="button" class="btn" id="undo">撤销</button>
+        <button type="button" class="btn" id="restart">重来</button>
+        <button type="button" class="btn" id="hint">提示</button>
+        <button type="button" class="btn" id="demo" aria-pressed="false">看解法</button>
+      </div>
+      <p class="status" id="status" aria-live="polite">按住棋子拖动。只有一条路可走的棋子，轻点就会移动。</p>
+    </div>
+
+    <section class="levels" aria-label="选择布局">
+      <div class="levels__group">
+        <h2 class="levels__title">入门残局</h2>
+        <p class="levels__desc">取自横刀立马最优解的后半程，适合先练手。</p>
+        <ul class="levels__list" id="listPractice"></ul>
+      </div>
+      <div class="levels__group">
+        <h2 class="levels__title">经典布局</h2>
+        <ul class="levels__list" id="listClassic"></ul>
+      </div>
+      <p class="note">计步按老规矩：同一枚棋子连续挪动，不论走几格，只算一步。横刀立马最少要 81 步。</p>
+      <p class="note">键盘：Tab 选棋子，方向键移动，Ctrl+Z 撤销。故事见《三国演义》第五十回“关云长义释曹操”。</p>
+    </section>
+  </div>
+  <p class="sr" id="live" aria-live="polite"></p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  document.documentElement.lang = 'zh-CN';
+
+  // ---- Solver: breadth-first search over whole-piece moves ----
+  // A position is a 20-char key, row-major. Same-shaped pieces are
+  // interchangeable: C = 曹操 (2x2), V/v = vertical top/bottom,
+  // H/h = horizontal left/right, S = soldier, . = empty.
+  const Solver = (() => {
+    const W = 4, H = 5;
+    const DIRS = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+
+    function stamp(g, r, c, h, w) {
+      const i = r * W + c;
+      if (h === 2 && w === 2) g[i] = g[i + 1] = g[i + W] = g[i + W + 1] = 'C';
+      else if (h === 2) { g[i] = 'V'; g[i + W] = 'v'; }
+      else if (w === 2) { g[i] = 'H'; g[i + 1] = 'h'; }
+      else g[i] = 'S';
+    }
+    function clear(g, r, c, h, w) {
+      for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) g[y * W + x] = '.';
+    }
+    function fits(g, r, c, h, w) {
+      if (r < 0 || c < 0 || r + h > H || c + w > W) return false;
+      for (let y = r; y < r + h; y++) for (let x = c; x < c + w; x++) if (g[y * W + x] !== '.') return false;
+      return true;
+    }
+    function keyOf(pieces) {
+      const g = new Array(W * H).fill('.');
+      for (const p of pieces) stamp(g, p.r, p.c, p.h, p.w);
+      return g.join('');
+    }
+    // 曹操 covers cells 13 and 18 only when he sits on the exit.
+    const isGoal = k => k[13] === 'C' && k[18] === 'C';
+
+    // Calls fn(nextKey) once for every position one piece-move away.
+    function eachMove(key, fn) {
+      const g = key.split('');
+      let bossSeen = false;
+      for (let i = 0; i < W * H; i++) {
+        const ch = key[i];
+        let h, w;
+        if (ch === 'C') { if (bossSeen) continue; bossSeen = true; h = 2; w = 2; }
+        else if (ch === 'V') { h = 2; w = 1; }
+        else if (ch === 'H') { h = 1; w = 2; }
+        else if (ch === 'S') { h = 1; w = 1; }
+        else continue;
+        const r0 = (i / W) | 0, c0 = i % W;
+        clear(g, r0, c0, h, w);
+        const seen = [i], queue = [i];
+        for (let qi = 0; qi < queue.length; qi++) {
+          const r = (queue[qi] / W) | 0, c = queue[qi] % W;
+          for (const [dr, dc] of DIRS) {
+            const nr = r + dr, nc = c + dc;
+            if (!fits(g, nr, nc, h, w)) continue;
+            const id = nr * W + nc;
+            if (seen.includes(id)) continue;
+            seen.push(id); queue.push(id);
+            stamp(g, nr, nc, h, w);
+            fn(g.join(''));
+            clear(g, nr, nc, h, w);
+          }
+        }
+        stamp(g, r0, c0, h, w);
+      }
+    }
+
+    // Shortest line of keys from `start` to the nearest exit position.
+    function solve(start) {
+      if (isGoal(start)) return [start];
+      const prev = new Map([[start, '']]);
+      const queue = [start];
+      for (let qi = 0; qi < queue.length; qi++) {
+        const k = queue[qi];
+        let found = '';
+        eachMove(k, n => {
+          if (found || prev.has(n)) return;
+          prev.set(n, k);
+          if (isGoal(n)) found = n; else queue.push(n);
+        });
+        if (found) {
+          const line = [];
+          for (let x = found; x; x = prev.get(x)) line.push(x);
+          return line.reverse();
+        }
+      }
+      return null;
+    }
+
+    // Which shapes differ between two keys: the mover's old and new spot.
+    function shapesOf(key) {
+      const out = [];
+      let bossSeen = false;
+      for (let i = 0; i < W * H; i++) {
+        const ch = key[i], r = (i / W) | 0, c = i % W;
+        if (ch === 'C') { if (!bossSeen) { bossSeen = true; out.push({ r, c, h: 2, w: 2 }); } }
+        else if (ch === 'V') out.push({ r, c, h: 2, w: 1 });
+        else if (ch === 'H') out.push({ r, c, h: 1, w: 2 });
+        else if (ch === 'S') out.push({ r, c, h: 1, w: 1 });
+      }
+      return out;
+    }
+    function diff(fromKey, toKey) {
+      const sig = s => `${s.r},${s.c},${s.h},${s.w}`;
+      const a = shapesOf(fromKey), b = shapesOf(toKey);
+      const inA = new Set(a.map(sig)), inB = new Set(b.map(sig));
+      return { from: a.find(s => !inB.has(sig(s))), to: b.find(s => !inA.has(sig(s))) };
+    }
+
+    return { keyOf, solve, diff };
+  })();
+
+  // ---- Layouts ----
+  // Letters name pieces: C 曹操, G 关羽, Z 张飞, Y 赵云, M 马超, H 黄忠,
+  // a-d 兵. Each minimum was checked with the solver above.
+  const LEVELS = [
+    { id: 'canju-1', name: '残局一', group: 'practice', min: 12, rows: ['ZM.Y', 'ZM.Y', 'CCaH', 'CCbH', 'cdGG'] },
+    { id: 'canju-2', name: '残局二', group: 'practice', min: 20, rows: ['MaY.', 'MbY.', 'ZCCH', 'ZCCH', 'cdGG'] },
+    { id: 'zuoyou', name: '左右布兵', group: 'classic', min: 54, rows: ['aCCb', 'cCCd', 'ZYMH', 'ZYMH', '.GG.'] },
+    { id: 'yilu', name: '一路进军', group: 'classic', min: 58, rows: ['ZCCa', 'ZCCb', 'YMHc', 'YMHd', '.GG.'] },
+    { id: 'qitou', name: '齐头并进', group: 'classic', min: 60, rows: ['ZCCY', 'ZCCY', 'abcd', 'MGGH', 'M..H'] },
+    { id: 'zhihui', name: '指挥若定', group: 'classic', min: 70, rows: ['ZCCY', 'ZCCY', 'aGGb', 'McdH', 'M..H'] },
+    { id: 'bingfen', name: '兵分三路', group: 'classic', min: 72, rows: ['aCCb', 'ZCCY', 'ZGGY', 'McdH', 'M..H'] },
+    { id: 'hengdao', name: '横刀立马', group: 'classic', min: 81, rows: ['ZCCY', 'ZCCY', 'MGGH', 'MabH', 'c..d'] },
+  ];
+  const DEFAULT_LEVEL = 'hengdao';
+  const NAMES = { C: '曹操', G: '关羽', Z: '张飞', Y: '赵云', M: '马超', H: '黄忠' };
+  const KINDS = { C: 'cao', G: 'guan', Z: 'jiang', Y: 'jiang', M: 'jiang', H: 'jiang' };
+  const COLS = 4, ROWS = 5;
+  const DIRS = [[-1, 0, '上'], [1, 0, '下'], [0, -1, '左'], [0, 1, '右']];
+  const DEFAULT_STATUS = '按住棋子拖动。只有一条路可走的棋子，轻点就会移动。';
+  const DRAG_COMMIT = 0.3; // share of a cell a drag must cover before the piece moves
+  const STORE_KEY = 'huarongdao.v1';
+  const byId = new Map(LEVELS.map(l => [l.id, l]));
+
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), board = $('board'), floor = $('floor'), ghost = $('ghost'), play = $('play');
+  const stepsEl = $('steps'), minEl = $('min'), bestEl = $('best');
+  const levelNameEl = $('levelName'), levelKindEl = $('levelKind');
+  const undoBtn = $('undo'), restartBtn = $('restart'), hintBtn = $('hint'), demoBtn = $('demo');
+  const statusEl = $('status'), liveEl = $('live');
+  const win = $('win'), winStat = $('winStat'), winNote = $('winNote'), winNext = $('winNext'), winAgain = $('winAgain');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  const store = (() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+      if (v && typeof v === 'object') {
+        if (!v.best || typeof v.best !== 'object') v.best = {};
+        return v;
+      }
+    } catch (e) { /* storage unavailable: play without saving */ }
+    return { best: {} };
+  })();
+  function persist() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) { /* ignore */ }
+  }
+
+  const state = {
+    level: null,
+    pieces: [],
+    history: [],      // groups of unit moves: { id, moves: [[dr, dc], ...] }
+    stash: null,      // the game before the last 重来, so 撤销 can bring it back
+    assisted: false,
+    demoUsed: false,
+    won: false,
+    line: null,       // cached shortest line from the solver
+    hint: null,
+    demoTimer: 0,
+    winTimer: 0,
+    thinking: false,
+    transient: false,
+  };
+  let cell = 0;
+  let drag = null;
+  const levelButtons = new Map();
+  const pieceById = id => state.pieces.find(p => p.id === id);
+
+  function parse(rows) {
+    const found = new Map();
+    rows.forEach((row, r) => [...row].forEach((ch, c) => {
+      if (ch === '.') return;
+      const p = found.get(ch);
+      if (p) { p.h = r - p.r + 1; p.w = Math.max(p.w, c - p.c + 1); }
+      else found.set(ch, { id: ch, r, c, h: 1, w: 1, name: NAMES[ch] || '兵', kind: KINDS[ch] || 'bing', el: null });
+    }));
+    return [...found.values()];
+  }
+
+  function setStatus(text, transient) {
+    statusEl.textContent = text;
+    state.transient = !!transient;
+  }
+  function announce(text) { liveEl.textContent = text; }
+
+  // ---- Board ----
+  function buildPieces() {
+    floor.querySelectorAll('.piece').forEach(el => el.remove());
+    for (const p of state.pieces) {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.className = `slot piece piece--${p.kind}${p.h > p.w ? ' is-tall' : p.w > p.h ? ' is-wide' : ''}`;
+      el.dataset.id = p.id;
+      el.style.setProperty('--w', p.w);
+      el.style.setProperty('--h', p.h);
+      el.append(glyphs('piece__name', p.name));
+      if (p.kind === 'cao') el.append(glyphs('piece__seal', '孟德'));
+      p.el = el;
+      place(p);
+      floor.append(el);
+    }
+  }
+  // One span per character, so CSS can stack them in either direction.
+  function glyphs(className, text) {
+    const wrap = document.createElement('span');
+    wrap.className = className;
+    wrap.setAttribute('aria-hidden', 'true');
+    for (const ch of text) {
+      const s = document.createElement('span');
+      s.textContent = ch;
+      wrap.append(s);
+    }
+    return wrap;
+  }
+  function place(p) {
+    p.el.style.setProperty('--r', p.r);
+    p.el.style.setProperty('--c', p.c);
+    p.el.setAttribute('aria-label', `${p.name}，第 ${p.r + 1} 行第 ${p.c + 1} 列`);
+  }
+  function blockedBy(p, r, c) {
+    if (r < 0 || c < 0 || r + p.h > ROWS || c + p.w > COLS) return true;
+    return state.pieces.some(q => q !== p && r < q.r + q.h && q.r < r + p.h && c < q.c + q.w && q.c < c + p.w);
+  }
+  const canMove = (p, dr, dc) => !blockedBy(p, p.r + dr, p.c + dc);
+  const openDirs = p => DIRS.filter(([dr, dc]) => canMove(p, dr, dc));
+
+  // ---- Moves and history ----
+  function newGroup(p) {
+    const g = { id: p.id, moves: [] };
+    state.history.push(g);
+    state.stash = null;
+    return g;
+  }
+  function step(p, dr, dc, group) {
+    p.r += dr;
+    p.c += dc;
+    group.moves.push([dr, dc]);
+    place(p);
+    clearHint();
+    if (state.transient) setStatus(DEFAULT_STATUS);
+    announce(`${p.name}向${DIRS.find(d => d[0] === dr && d[1] === dc)[2]}`);
+    updateStats();
+    if (p.kind === 'cao' && p.r === 3 && p.c === 1) finish();
+  }
+  function pruneHistory() {
+    while (state.history.length && !state.history[state.history.length - 1].moves.length) state.history.pop();
+  }
+  // Consecutive moves of one piece count as a single step.
+  function countSteps() {
+    let n = 0;
+    for (let i = 0; i < state.history.length;) {
+      const id = state.history[i].id;
+      let dr = 0, dc = 0;
+      for (; i < state.history.length && state.history[i].id === id; i++) {
+        for (const [a, b] of state.history[i].moves) { dr += a; dc += b; }
+      }
+      if (dr || dc) n++;
+    }
+    return n;
+  }
+  function rebuild() {
+    const start = parse(state.level.rows);
+    for (const p of state.pieces) {
+      const s = start.find(q => q.id === p.id);
+      p.r = s.r;
+      p.c = s.c;
+    }
+    for (const g of state.history) {
+      const p = pieceById(g.id);
+      for (const [dr, dc] of g.moves) { p.r += dr; p.c += dc; }
+    }
+    state.pieces.forEach(place);
+  }
+
+  function updateStats() {
+    stepsEl.textContent = countSteps();
+    const best = store.best[state.level.id];
+    bestEl.textContent = best == null ? '—' : best;
+    const running = !!state.demoTimer;
+    undoBtn.disabled = state.won || running || (!state.history.length && !state.stash);
+    restartBtn.disabled = running || !state.history.length;
+    hintBtn.disabled = state.won || running;
+    demoBtn.disabled = state.won;
+    if (!state.thinking) {
+      hintBtn.textContent = '提示';
+      demoBtn.textContent = running ? '停下' : '看解法';
+    }
+    demoBtn.setAttribute('aria-pressed', String(running));
+    floor.inert = state.won;
+  }
+
+  function undo() {
+    if (state.won || state.demoTimer || drag || state.thinking) return;
+    if (state.history.length) {
+      state.history.pop();
+    } else if (state.stash) {
+      ({ history: state.history, assisted: state.assisted, demoUsed: state.demoUsed } = state.stash);
+      state.stash = null;
+      setStatus('回到了重来之前的棋局。', true);
+    } else {
+      return;
+    }
+    clearHint();
+    rebuild();
+    updateStats();
+  }
+  function restart() {
+    if (drag || state.thinking) return;
+    stopDemo();
+    if (state.won) { loadLevel(state.level.id); return; }
+    if (!state.history.length) return;
+    state.stash = { history: state.history, assisted: state.assisted, demoUsed: state.demoUsed };
+    state.history = [];
+    state.assisted = false;
+    state.demoUsed = false;
+    clearHint();
+    rebuild();
+    updateStats();
+    setStatus('已重来。点“撤销”能回到刚才的棋局。', true);
+  }
+
+  function loadLevel(id, saved) {
+    stopDemo();
+    endDrag();
+    clearTimeout(state.winTimer);
+    const level = byId.get(id) || byId.get(DEFAULT_LEVEL);
+    Object.assign(state, {
+      level, pieces: parse(level.rows), history: [], stash: null,
+      assisted: false, demoUsed: false, won: false, hint: null, thinking: false,
+    });
+    ghost.hidden = true;
+    buildPieces();
+    if (saved) restore(saved);
+    win.hidden = true;
+    levelNameEl.textContent = level.name;
+    levelKindEl.textContent = level.group === 'practice' ? '入门' : '经典';
+    minEl.textContent = level.min;
+    store.level = level.id;
+    persist();
+    renderLevels();
+    updateStats();
+    setStatus(DEFAULT_STATUS);
+  }
+  // Replays a saved game, keeping it only if every move is still legal.
+  function restore(saved) {
+    if (!Array.isArray(saved.history)) return;
+    const history = [];
+    for (const g of saved.history) {
+      const p = g && pieceById(g.id);
+      if (!p || !Array.isArray(g.moves)) return discard();
+      const moves = [];
+      for (const m of g.moves) {
+        const dr = Array.isArray(m) ? m[0] : NaN, dc = Array.isArray(m) ? m[1] : NaN;
+        if (Math.abs(dr) + Math.abs(dc) !== 1 || !canMove(p, dr, dc)) return discard();
+        p.r += dr;
+        p.c += dc;
+        moves.push([dr, dc]);
+      }
+      if (moves.length) history.push({ id: p.id, moves });
+    }
+    const cao = pieceById('C');
+    if (cao.r === 3 && cao.c === 1) return discard();
+    state.history = history;
+    state.assisted = !!saved.assisted;
+    state.demoUsed = !!saved.demoUsed;
+    state.pieces.forEach(place);
+    function discard() {
+      state.history = [];
+      rebuild();
+    }
+  }
+
+  function finish() {
+    state.won = true;
+    stopDemo();
+    clearHint();
+    endDrag();
+    const steps = countSteps();
+    const level = state.level;
+    const prev = store.best[level.id];
+    const record = !state.assisted && (prev == null || steps < prev);
+    if (record) {
+      store.best[level.id] = steps;
+      persist();
+    }
+    winStat.textContent = `用了 ${steps} 步 · 最少 ${level.min} 步`;
+    winNote.textContent = state.demoUsed ? '这是最少步数的走法。自己再走一遍试试？'
+      : state.assisted ? '这局用过提示，不计入最佳成绩。'
+      : record && steps === level.min ? '新纪录，正好是最少步数。'
+      : record ? '新纪录。'
+      : `你的最佳是 ${prev} 步。`;
+    setStatus('过关。换个布局试试，或者再走一遍。');
+    updateStats();
+    renderLevels();
+    announce(`曹操走出了华容道，用了 ${steps} 步。`);
+    const cao = pieceById('C');
+    const reveal = () => {
+      win.hidden = false;
+      winNext.focus({ preventScroll: true });
+    };
+    if (reduced.matches) {
+      cao.el.style.visibility = 'hidden';
+      reveal();
+      return;
+    }
+    cao.el.classList.add('is-leaving');
+    cao.el.style.setProperty('--r', 4.7);
+    state.winTimer = setTimeout(reveal, 760);
+  }
+
+  // ---- Hints and the solution demo ----
+  function withSolution(btn, fn) {
+    const key = Solver.keyOf(state.pieces);
+    if (state.line && state.line.includes(key)) {
+      fn();
+      updateStats();
+      return;
+    }
+    const level = state.level;
+    state.thinking = true;
+    btn.textContent = '推演中';
+    // Let the label paint before the search blocks the main thread.
+    requestAnimationFrame(() => setTimeout(() => {
+      state.thinking = false;
+      if (!state.won && state.level === level) fn();
+      updateStats();
+    }, 0));
+  }
+  function nextMove() {
+    const key = Solver.keyOf(state.pieces);
+    let i = state.line ? state.line.indexOf(key) : -1;
+    if (i < 0) {
+      state.line = Solver.solve(key);
+      i = 0;
+    }
+    const line = state.line;
+    if (!line || i >= line.length - 1) return null;
+    const { from, to } = Solver.diff(key, line[i + 1]);
+    const p = state.pieces.find(q => q.r === from.r && q.c === from.c && q.h === from.h && q.w === from.w);
+    return p ? { p, r: to.r, c: to.c, left: line.length - 1 - i } : null;
+  }
+  function showHint() {
+    if (state.won || state.demoTimer || state.thinking) return;
+    withSolution(hintBtn, () => {
+      const m = nextMove();
+      if (!m) return;
+      state.assisted = true;
+      clearHint();
+      state.hint = m;
+      m.p.el.classList.add('is-hint');
+      for (const [k, v] of [['--r', m.r], ['--c', m.c], ['--w', m.p.w], ['--h', m.p.h]]) ghost.style.setProperty(k, v);
+      ghost.hidden = false;
+      setStatus(`提示：把${m.p.name}挪到虚线框里。照最优走法，还要 ${m.left} 步。`, true);
+    });
+  }
+  function clearHint() {
+    if (state.hint) state.hint.p.el.classList.remove('is-hint');
+    state.hint = null;
+    ghost.hidden = true;
+  }
+  function toggleDemo() {
+    if (state.thinking) return;
+    if (state.demoTimer) {
+      stopDemo();
+      setStatus('演示停在这里，接着自己走吧。', true);
+      return;
+    }
+    if (state.won) return;
+    withSolution(demoBtn, () => {
+      if (!nextMove()) return;
+      state.assisted = true;
+      state.demoUsed = true;
+      clearHint();
+      setStatus('正在演示最少步数的走法。点棋盘或“停下”就能接手。');
+      state.demoTimer = setTimeout(demoStep, 250);
+    });
+  }
+  function demoStep() {
+    const m = nextMove();
+    const path = m ? unitPath(m.p, m.r, m.c) : [];
+    if (!path.length) { stopDemo(); return; }
+    const group = newGroup(m.p);
+    let k = 0;
+    const tick = () => {
+      if (!state.demoTimer) return;
+      const [dr, dc] = path[k++];
+      step(m.p, dr, dc, group);
+      if (!state.demoTimer) return; // finished or stopped
+      state.demoTimer = k < path.length ? setTimeout(tick, 150) : setTimeout(demoStep, 430);
+    };
+    tick();
+  }
+  function stopDemo() {
+    if (!state.demoTimer) return;
+    clearTimeout(state.demoTimer);
+    state.demoTimer = 0;
+    pruneHistory();
+    updateStats();
+  }
+  function takeOver() {
+    if (!state.demoTimer) return;
+    stopDemo();
+    setStatus('你接手了，接着走吧。', true);
+  }
+  // Cell-by-cell route for one piece-move, so L-shaped moves animate honestly.
+  function unitPath(p, tr, tc) {
+    const prev = new Map([[p.r * COLS + p.c, null]]);
+    const queue = [[p.r, p.c]];
+    for (let i = 0; i < queue.length; i++) {
+      const [r, c] = queue[i];
+      if (r === tr && c === tc) break;
+      for (const [dr, dc] of DIRS) {
+        const nr = r + dr, nc = c + dc;
+        if (blockedBy(p, nr, nc) || prev.has(nr * COLS + nc)) continue;
+        prev.set(nr * COLS + nc, [r * COLS + c, dr, dc]);
+        queue.push([nr, nc]);
+      }
+    }
+    const path = [];
+    for (let at = tr * COLS + tc; prev.get(at); at = prev.get(at)[0]) path.unshift(prev.get(at).slice(1));
+    return path;
+  }
+
+  // ---- Input ----
+  function tap(p) {
+    if (state.won) return;
+    const open = openDirs(p);
+    if (open.length === 1) {
+      step(p, open[0][0], open[0][1], newGroup(p));
+      return;
+    }
+    nudge(p);
+    setStatus(open.length
+      ? `${p.name}能往${open.map(d => d[2]).join('、')}走，按住拖一下选方向。`
+      : `${p.name}四面都被挡住了。`, true);
+  }
+  function nudge(p) {
+    p.el.classList.remove('is-stuck');
+    void p.el.offsetWidth;
+    p.el.classList.add('is-stuck');
+  }
+  function endDrag() {
+    if (!drag) return;
+    const { el, pid, group } = drag;
+    drag = null;
+    el.classList.remove('is-lifted');
+    try { el.releasePointerCapture(pid); } catch (e) { /* already released */ }
+    if (group) {
+      let r = 0, c = 0;
+      for (const [dr, dc] of group.moves) { r += dr; c += dc; }
+      if (!r && !c) {
+        state.history.splice(state.history.indexOf(group), 1);
+        updateStats();
+      }
+    }
+  }
+
+  floor.addEventListener('pointerdown', e => {
+    const el = e.target.closest('.piece');
+    if (!el || state.won || drag || e.button > 0) return;
+    takeOver();
+    const p = pieceById(el.dataset.id);
+    if (!p) return;
+    e.preventDefault();
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* keep going without capture */ }
+    drag = { p, el, pid: e.pointerId, x0: e.clientX, y0: e.clientY, gx: 0, gy: 0, group: null, travel: 0 };
+    el.classList.add('is-lifted');
+  });
+  floor.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+    drag.travel = Math.max(drag.travel, Math.hypot(dx, dy));
+    // How many cells the finger asks for along each axis.
+    const want = d => Math.sign(d) * Math.floor(Math.abs(d) / cell + 1 - DRAG_COMMIT);
+    const wx = want(dx), wy = want(dy);
+    for (let guard = 0; guard < 8 && drag; guard++) {
+      const nx = wx - drag.gx, ny = wy - drag.gy;
+      if (!nx && !ny) break;
+      const across = [0, Math.sign(nx)], down = [Math.sign(ny), 0];
+      const order = Math.abs(nx) >= Math.abs(ny) ? [across, down] : [down, across];
+      const move = order.find(([dr, dc]) => (dr || dc) && canMove(drag.p, dr, dc));
+      if (!move) break;
+      const [dr, dc] = move;
+      if (!drag.group) drag.group = newGroup(drag.p);
+      drag.gx += dc;
+      drag.gy += dr;
+      step(drag.p, dr, dc, drag.group);
+    }
+  });
+  const release = e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const { p, group, travel } = drag;
+    endDrag();
+    if (!group && travel < 10 && e.type === 'pointerup') tap(p);
+  };
+  floor.addEventListener('pointerup', release);
+  floor.addEventListener('pointercancel', release);
+  floor.addEventListener('animationend', e => {
+    if (e.animationName === 'stuck') e.target.classList.remove('is-stuck');
+  });
+  floor.addEventListener('keydown', e => {
+    const el = e.target.closest('.piece');
+    if (!el || state.won) return;
+    const p = pieceById(el.dataset.id);
+    const arrows = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+    if (arrows[e.key]) {
+      e.preventDefault();
+      takeOver();
+      const [dr, dc] = arrows[e.key];
+      if (canMove(p, dr, dc)) step(p, dr, dc, newGroup(p));
+      else nudge(p);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      takeOver();
+      tap(p);
+    }
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      undo();
+    }
+  });
+  undoBtn.addEventListener('click', undo);
+  restartBtn.addEventListener('click', restart);
+  hintBtn.addEventListener('click', showHint);
+  demoBtn.addEventListener('click', toggleDemo);
+  winNext.addEventListener('click', () => {
+    const i = LEVELS.indexOf(state.level);
+    loadLevel(LEVELS[(i + 1) % LEVELS.length].id);
+  });
+  winAgain.addEventListener('click', () => loadLevel(state.level.id));
+
+  // ---- Level picker ----
+  function thumb(rows) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 48 58');
+    svg.setAttribute('class', 'lv__thumb');
+    svg.setAttribute('aria-hidden', 'true');
+    const rect = (x, y, width, height, fill, rx) => {
+      const el = document.createElementNS(NS, 'rect');
+      for (const [k, v] of Object.entries({ x, y, width, height, fill, rx })) el.setAttribute(k, v);
+      svg.append(el);
+    };
+    rect(0, 0, 48, 58, '#4a2a22', 3);
+    rect(4, 4, 40, 50, '#5c3b2e', 1);
+    rect(14, 53, 20, 5, '#5c3b2e', 0);
+    const fills = { cao: '#ede3cf', guan: '#a8372c', jiang: '#221e1c', bing: '#d2ae72' };
+    for (const p of parse(rows)) rect(4 + p.c * 10 + .7, 4 + p.r * 10 + .7, p.w * 10 - 1.4, p.h * 10 - 1.4, fills[p.kind], 1.3);
+    return svg;
+  }
+  function buildLevels() {
+    const lists = { practice: $('listPractice'), classic: $('listClassic') };
+    for (const lv of LEVELS) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'lv';
+      const fig = document.createElement('span');
+      fig.className = 'lv__fig';
+      const seal = document.createElement('span');
+      seal.className = 'lv__seal';
+      seal.textContent = '过';
+      fig.append(thumb(lv.rows), seal);
+      const text = document.createElement('span');
+      text.className = 'lv__text';
+      for (const cls of ['lv__name', 'lv__meta', 'lv__best']) {
+        const s = document.createElement('span');
+        s.className = cls;
+        text.append(s);
+      }
+      text.firstChild.textContent = lv.name;
+      text.children[1].textContent = `最少 ${lv.min} 步`;
+      btn.append(fig, text);
+      btn.addEventListener('click', () => {
+        loadLevel(lv.id);
+        bringBoardIntoView();
+      });
+      const li = document.createElement('li');
+      li.append(btn);
+      lists[lv.group].append(li);
+      levelButtons.set(lv.id, btn);
+    }
+  }
+  function renderLevels() {
+    for (const lv of LEVELS) {
+      const btn = levelButtons.get(lv.id);
+      const best = store.best[lv.id];
+      const current = lv.id === state.level.id;
+      btn.setAttribute('aria-current', String(current));
+      btn.querySelector('.lv__seal').hidden = best == null;
+      const bestLine = btn.querySelector('.lv__best');
+      bestLine.hidden = best == null;
+      bestLine.textContent = best == null ? '' : `最佳 ${best} 步`;
+      btn.setAttribute('aria-label', `${lv.name}，最少 ${lv.min} 步${best == null ? '' : `，已过关，最佳 ${best} 步`}${current ? '，正在玩' : ''}`);
+    }
+  }
+  function bringBoardIntoView() {
+    if (stage.clientWidth >= 760) return;
+    const top = $('meta').getBoundingClientRect().top + window.scrollY - 12;
+    window.scrollTo({ top: Math.max(0, top), behavior: reduced.matches ? 'auto' : 'smooth' });
+  }
+
+  // ---- Sizing: fit the board to the width, and to the first screen when it can ----
+  function layout() {
+    const width = stage.clientWidth;
+    const wide = width >= 760;
+    let size = (wide ? width - 48 - 320 : width) / 4.36;
+    const top = board.getBoundingClientRect().top + window.scrollY;
+    const below = wide ? 24 : play.offsetHeight + 28;
+    const byHeight = (window.innerHeight - top - below) / 5.7;
+    if (byHeight >= 58) size = Math.min(size, byHeight);
+    size = Math.max(44, Math.min(100, Math.floor(size)));
+    if (size !== cell) {
+      cell = size;
+      board.style.setProperty('--cell', `${size}px`);
+    }
+  }
+
+  // ---- Boot ----
+  buildLevels();
+  window.addEventListener('resize', layout);
+  if (document.fonts) {
+    document.fonts.ready.then(layout, () => {});
+    document.fonts.addEventListener('loadingdone', layout);
+  }
+
+  function start(data) {
+    layout();
+    const saved = data && byId.has(data.level) ? data : null;
+    const id = saved ? saved.level : byId.has(store.level) ? store.level : DEFAULT_LEVEL;
+    loadLevel(id, saved);
+  }
+  function snapshot() {
+    return {
+      level: state.level && state.level.id,
+      history: state.history,
+      assisted: state.assisted,
+      demoUsed: state.demoUsed,
+    };
+  }
+  try { window.claude?.hot?.snapshot?.(snapshot); } catch (e) { /* not in the artifact viewer */ }
+  if (window.claude?.hot?.ready) window.claude.hot.ready(start);
+  else start(window.claude?.hot?.data ?? {});
+})();
+</script>
+</body>
+</html>
