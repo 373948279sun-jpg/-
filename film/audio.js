@@ -364,10 +364,10 @@
     return b;
   }
   // A fresh chain per play session; disconnecting it silences anything already scheduled.
-  function makeChain(ctx, dest) {
+  function makeChain(ctx, dest, ir) {
     const dry = ctx.createGain();
     const rev = ctx.createGain(), conv = ctx.createConvolver();
-    conv.buffer = makeIR(ctx);
+    conv.buffer = ir || makeIR(ctx);
     const revOut = ctx.createGain();
     revOut.gain.value = 0.5;
     rev.connect(conv); conv.connect(revOut); revOut.connect(dry);
@@ -407,13 +407,13 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC({ latencyHint: 'playback' });
       const master = makeMaster(ctx);
-      const noise = makeNoise(ctx);
+      const noise = makeNoise(ctx), ir = makeIR(ctx);
       let chain = null, voices = null, cursor = 0, base = 0;
       return {
         ctx, master,
         start(filmT) {
           if (chain) chain.dry.disconnect();
-          chain = makeChain(ctx, master);
+          chain = makeChain(ctx, master, ir);
           voices = Voices(ctx, chain, noise);
           base = ctx.currentTime + 0.05 - filmT;
           const ev = getScore();
