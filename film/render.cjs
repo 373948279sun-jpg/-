@@ -70,7 +70,7 @@ async function stills(times, outDir) {
 async function segment(browser, from, to, file) {
   const page = await openPage(browser);
   await ff(['-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', '17', '-pix_fmt', 'yuv420p', '-r', String(FPS), file], {
+    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10', '-pix_fmt', 'yuv420p', '-r', String(FPS), file], {
     stdin: async (stdin) => {
       for (let f = from; f < to; f++) {
         const url = await page.evaluate((t) => window.PF.exportFrame(t, 'image/jpeg', 0.96), f / FPS);
@@ -83,6 +83,10 @@ async function segment(browser, from, to, file) {
   });
   await page.close();
 }
+
+// Final delivery encode: two-pass H.264 at a fixed average bitrate, so the file
+// size is predictable (about 48 MB for 120 s) and hard scenes get the bits.
+const VIDEO_KBPS = 3000;
 
 async function video(out, workers = 3) {
   const dir = path.dirname(path.resolve(out));
@@ -107,8 +111,15 @@ async function video(out, workers = 3) {
   await Promise.all(jobs);
   await browser.close();
   fs.writeFileSync(path.join(tmp, 'list.txt'), segs.map((s) => `file '${s}'`).join('\n'));
-  await ff(['-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt'), '-i', path.join(tmp, 'audio.wav'),
-    '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', out]);
+  const master = path.join(tmp, 'master.mp4');
+  await ff(['-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt'), '-c', 'copy', master]);
+  console.error('encoding delivery file (two-pass)…');
+  const log = path.join(tmp, 'x264');
+  const venc = ['-c:v', 'libx264', '-preset', 'slow', '-profile:v', 'high', '-level', '4.1', '-pix_fmt', 'yuv420p',
+    '-b:v', `${VIDEO_KBPS}k`, '-maxrate', `${VIDEO_KBPS * 2}k`, '-bufsize', `${VIDEO_KBPS * 4}k`, '-passlogfile', log];
+  await ff(['-i', master, ...venc, '-pass', '1', '-an', '-f', 'mp4', '/dev/null']);
+  await ff(['-i', master, '-i', path.join(tmp, 'audio.wav'), ...venc, '-pass', '2',
+    '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', '-shortest', out]);
   fs.rmSync(tmp, { recursive: true, force: true });
   console.error('wrote', out);
 }
